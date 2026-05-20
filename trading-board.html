@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>퀀트 AI 트레이딩 보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1f2937;
+    --surface3: #374151;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --green: #10b981;
+    --green-light: #10b98118;
+    --red: #ef4444;
+    --red-light: #ef444418;
+    --yellow: #f59e0b;
+    --yellow-light: #f59e0b18;
+    --text: #f9fafb;
+    --text-dim: #9ca3af;
+    --text-muted: #6b7280;
+    --border: #1f2937;
+    --radius: 12px;
+    --shadow: 0 4px 32px rgba(0,0,0,0.5);
+    --buy: #10b981;
+    --sell: #ef4444;
+  }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-bottom: 1px solid #1e3a5f;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+
+  .logo {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  .header h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  .status-text { font-size: 12px; color: var(--text-dim); }
+
+  /* Main Layout */
+  .main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+  }
+
+  /* Sidebar */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title span { font-size: 16px; }
+
+  /* Controls */
+  .control-group { margin-bottom: 14px; }
+  .control-group:last-child { margin-bottom: 0; }
+
+  .control-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .control-group input, .control-group select {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--surface3);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .control-group input:focus, .control-group select:focus {
+    border-color: var(--accent);
+  }
+
+  .control-group input[type="range"] {
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  .range-val {
+    float: right;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 11px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    margin-top: 6px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+  }
+
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--surface3);
+  }
+
+  .btn-secondary:hover { background: var(--surface3); color: var(--text); }
+
+  /* Signal Box */
+  .signal-box {
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid;
+    transition: all 0.4s;
+  }
+
+  .signal-box.buy { background: var(--green-light); border-color: var(--green); }
+  .signal-box.sell { background: var(--red-light); border-color: var(--red); }
+  .signal-box.neutral { background: var(--yellow-light); border-color: var(--yellow); }
+
+  .signal-icon { font-size: 36px; margin-bottom: 8px; }
+
+  .signal-label {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .signal-box.buy .signal-label { color: var(--green); }
+  .signal-box.sell .signal-label { color: var(--red); }
+  .signal-box.neutral .signal-label { color: var(--yellow); }
+
+  .signal-return {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .signal-return strong {
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .signal-box.buy .signal-return strong { color: var(--green); }
+  .signal-box.sell .signal-return strong { color: var(--red); }
+
+  .signal-confidence {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  .confidence-bar {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  .signal-box.buy .confidence-fill { background: var(--green); }
+  .signal-box.sell .confidence-fill { background: var(--red); }
+  .signal-box.neutral .confidence-fill { background: var(--yellow); }
+
+  /* Feature Indicators */
+  .indicator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .indicator-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid var(--surface3);
+  }
+
+  .indicator-name { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+  .indicator-value { font-size: 18px; font-weight: 700; color: var(--text); }
+  .indicator-value.up { color: var(--green); }
+  .indicator-value.down { color: var(--red); }
+  .indicator-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  .indicator-bar {
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .indicator-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.6s ease;
+  }
+
+  /* Chart Area */
+  .chart-area { display: flex; flex-direction: column; gap: 16px; }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .chart-title { font-size: 14px; font-weight: 600; }
+
+  .chart-legend { display: flex; gap: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .chart-wrapper { position: relative; height: 220px; }
+
+  /* Data Table */
+  .table-container { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 10px 12px;
+    text-align: right;
+    color: var(--text-dim);
+    font-weight: 600;
+    border-bottom: 1px solid var(--surface3);
+    white-space: nowrap;
+  }
+
+  thead th:first-child { text-align: left; }
+
+  tbody tr { border-bottom: 1px solid #1a2234; transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; background: linear-gradient(90deg, #1e3a5f20, transparent); }
+
+  tbody td {
+    padding: 9px 12px;
+    text-align: right;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+  }
+
+  tbody td:first-child { text-align: left; color: var(--text-dim); font-family: inherit; }
+
+  .td-up { color: var(--green) !important; }
+  .td-down { color: var(--red) !important; }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 14px;
+    border: 1px solid var(--surface3);
+    text-align: center;
+  }
+
+  .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 20px; font-weight: 700; color: var(--text); }
+  .stat-change { font-size: 11px; margin-top: 3px; }
+  .stat-change.up { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+
+  /* Loading animation */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .spin {
+    width: 20px; height: 20px;
+    border: 2px solid var(--surface3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Model Architecture Badge */
+  .model-info {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid var(--surface3);
+  }
+
+  .model-info-title { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-bottom: 8px; }
+
+  .model-layer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--surface3);
+  }
+
+  .model-layer:last-child { border-bottom: none; }
+
+  .layer-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 65px;
+    text-align: center;
+  }
+
+  .lb-input { background: #1e3a5f; color: #60a5fa; }
+  .lb-conv { background: #1a3329; color: #34d399; }
+  .lb-pool { background: #2d1f3d; color: #a78bfa; }
+  .lb-flat { background: #2d2a1e; color: #fbbf24; }
+  .lb-dense { background: #2d1e1e; color: #f87171; }
+  .lb-out { background: #1e2d1e; color: #86efac; }
+
+  .layer-desc { font-size: 10px; color: var(--text-muted); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab {
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .tab:not(.active):hover { background: var(--surface2); color: var(--text); border-color: var(--surface3); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .main { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .main { padding: 16px; }
+    .header { padding: 12px 16px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">📈</div>
+    <div>
+      <div class="header h1" style="font-size:17px;font-weight:700;">퀀트 AI 트레이딩 보드</div>
+      <div class="header-sub">CNN 기반 5일 수익률 예측 모델</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <span class="status-text">모델 준비 완료</span>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Settings Card -->
+    <div class="card">
+      <div class="card-title"><span>⚙️</span> 데이터 설정</div>
+
+      <div class="control-group">
+        <label>주가 범위 (하한 · 상한, 원)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="priceMin" value="50000" step="1000">
+          <input type="number" id="priceMax" value="100000" step="1000">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>52주 고가 (원)</label>
+        <input type="number" id="high52w" value="120000" step="1000">
+      </div>
+
+      <div class="control-group">
+        <label>52주 저가 (원)</label>
+        <input type="number" id="low52w" value="40000" step="1000">
+      </div>
+
+      <div class="control-group">
+        <label>
+          데이터 기간 (일)
+          <span class="range-val" id="periodsVal">100</span>
+        </label>
+        <input type="range" id="periods" min="80" max="500" value="100"
+               oninput="document.getElementById('periodsVal').textContent=this.value">
+      </div>
+
+      <div class="control-group">
+        <label>
+          룩백 윈도우 (일)
+          <span class="range-val" id="lookbackVal">20</span>
+        </label>
+        <input type="range" id="lookback" min="10" max="60" value="20"
+               oninput="document.getElementById('lookbackVal').textContent=this.value">
+      </div>
+
+      <div class="control-group">
+        <label>랜덤 시드</label>
+        <input type="number" id="seed" value="42" min="0" max="9999">
+      </div>
+
+      <button class="btn btn-primary" onclick="runAnalysis()">🔍 분석 실행</button>
+      <button class="btn btn-secondary" onclick="randomSeed()">🎲 랜덤 데이터 생성</button>
+    </div>
+
+    <!-- Signal Card -->
+    <div class="card">
+      <div class="card-title"><span>🚦</span> AI 트레이딩 시그널</div>
+      <div id="signalBox" class="signal-box neutral">
+        <div class="signal-icon">⏳</div>
+        <div class="signal-label">대기중</div>
+        <div class="signal-return">분석 실행 버튼을 눌러주세요</div>
+        <div class="confidence-bar"><div class="confidence-fill" id="confFill" style="width:0%"></div></div>
+        <div class="signal-confidence" id="confText">신뢰도: -</div>
+      </div>
+    </div>
+
+    <!-- Indicators Card -->
+    <div class="card">
+      <div class="card-title"><span>📊</span> 핵심 투자 지표 (최근일)</div>
+      <div class="indicator-grid">
+        <div class="indicator-item">
+          <div class="indicator-name">일별 로그수익률</div>
+          <div class="indicator-value" id="ind-ret">-</div>
+          <div class="indicator-desc">ret_1d</div>
+          <div class="indicator-bar"><div class="indicator-bar-fill" id="bar-ret" style="width:50%"></div></div>
+        </div>
+        <div class="indicator-item">
+          <div class="indicator-name">52주 고가 대비</div>
+          <div class="indicator-value" id="ind-high">-</div>
+          <div class="indicator-desc">52w_high_r</div>
+          <div class="indicator-bar"><div class="indicator-bar-fill" id="bar-high" style="width:50%"></div></div>
+        </div>
+        <div class="indicator-item">
+          <div class="indicator-name">52주 저가 대비</div>
+          <div class="indicator-value" id="ind-low">-</div>
+          <div class="indicator-desc">52w_low_r</div>
+          <div class="indicator-bar"><div class="indicator-bar-fill" id="bar-low" style="width:50%"></div></div>
+        </div>
+        <div class="indicator-item">
+          <div class="indicator-name">거래량/MA60</div>
+          <div class="indicator-value" id="ind-vol">-</div>
+          <div class="indicator-desc">vol_over_ma60</div>
+          <div class="indicator-bar"><div class="indicator-bar-fill" id="bar-vol" style="width:50%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Architecture -->
+    <div class="card">
+      <div class="card-title"><span>🧠</span> CNN 모델 구조</div>
+      <div class="model-info">
+        <div class="model-info-title">Sequential Model (lookback=20, channels=4)</div>
+        <div class="model-layer">
+          <span class="layer-badge lb-input">Input</span>
+          <span class="layer-desc">(20, 4) — 20일 × 4 지표</span>
+        </div>
+        <div class="model-layer">
+          <span class="layer-badge lb-conv">Conv1D</span>
+          <span class="layer-desc">32필터, kernel=3, causal, ReLU</span>
+        </div>
+        <div class="model-layer">
+          <span class="layer-badge lb-pool">MaxPool</span>
+          <span class="layer-desc">pool_size=5</span>
+        </div>
+        <div class="model-layer">
+          <span class="layer-badge lb-flat">Flatten</span>
+          <span class="layer-desc">→ 1D + Dropout(0.2)</span>
+        </div>
+        <div class="model-layer">
+          <span class="layer-badge lb-dense">Dense</span>
+          <span class="layer-desc">32 units, ReLU + Dropout(0.2)</span>
+        </div>
+        <div class="model-layer">
+          <span class="layer-badge lb-out">Output</span>
+          <span class="layer-desc">1 unit, Linear (5일 수익률)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Chart Area -->
+  <div class="chart-area">
+
+    <!-- Stats Row -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-item">
+        <div class="stat-label">현재가</div>
+        <div class="stat-value" id="stat-price">-</div>
+        <div class="stat-change" id="stat-price-chg">-</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">예측 5일 수익률</div>
+        <div class="stat-value" id="stat-ret">-</div>
+        <div class="stat-change" id="stat-ret-dir">-</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">52주 고가 대비</div>
+        <div class="stat-value" id="stat-high">-</div>
+        <div class="stat-change" id="stat-high-sub">-</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">52주 저가 대비</div>
+        <div class="stat-value" id="stat-low">-</div>
+        <div class="stat-change" id="stat-low-sub">-</div>
+      </div>
+    </div>
+
+    <!-- Price Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">주가 추이 (전체 기간)</div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>주가</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>52주 고가</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>52주 저가</div>
+        </div>
+      </div>
+      <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <!-- Feature Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">일별 로그 수익률 (ret_1d)</div>
+        </div>
+        <div class="chart-wrapper" style="height:160px;"><canvas id="retChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">거래량 / MA60 (vol_over_ma60)</div>
+        </div>
+        <div class="chart-wrapper" style="height:160px;"><canvas id="volChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">최근 데이터 (최신 20일)</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('raw')">원시 데이터</div>
+          <div class="tab" onclick="switchTab('feat')">피처 데이터</div>
+        </div>
+      </div>
+
+      <div class="tab-content active" id="tab-raw">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>현재가</th>
+                <th>52주 고가</th>
+                <th>52주 저가</th>
+                <th>거래량</th>
+              </tr>
+            </thead>
+            <tbody id="rawTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">분석을 실행하면 데이터가 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-feat">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>ret_1d (%)</th>
+                <th>52w_high_r</th>
+                <th>52w_low_r</th>
+                <th>vol_over_ma60</th>
+              </tr>
+            </thead>
+            <tbody id="featTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">분석을 실행하면 데이터가 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── 유사난수 생성기 (시드 기반) ────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ─── 데이터 생성 (Python prepare_trading_data 재현) ──────────────────────
+function generateData(params) {
+  const { priceMin, priceMax, high52w, low52w, periods, seed } = params;
+  const rand = mulberry32(seed);
+
+  const dates = [];
+  const prices = [], highs = [], lows = [], volumes = [];
+
+  let d = new Date(2025, 0, 1);
+  for (let i = 0; i < periods; i++) {
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    dates.push(d.toISOString().slice(0, 10));
+    d = new Date(d); d.setDate(d.getDate() + 1);
+
+    prices.push(Math.floor(rand() * (priceMax - priceMin) + priceMin));
+    highs.push(high52w);
+    lows.push(low52w);
+    volumes.push(Math.floor(rand() * (50000000 - 1000000) + 1000000));
+  }
+
+  return { dates, prices, highs, lows, volumes };
+}
+
+// ─── 피처 계산 ─────────────────────────────────────────────────────────
+function computeFeatures(data) {
+  const { dates, prices, highs, lows, volumes } = data;
+  const n = prices.length;
+
+  const ret1d = [null];
+  for (let i = 1; i < n; i++) {
+    ret1d.push(Math.log(prices[i]) - Math.log(prices[i - 1]));
+  }
+
+  const highR = prices.map((p, i) => p / highs[i]);
+  const lowR  = prices.map((p, i) => p / lows[i]);
+
+  const MA60 = 60;
+  const volMa = Array(n).fill(null);
+  for (let i = MA60 - 1; i < n; i++) {
+    let s = 0;
+    for (let j = i - MA60 + 1; j <= i; j++) s += volumes[j];
+    volMa[i] = volumes[i] / (s / MA60);
+  }
+
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    if (ret1d[i] === null || volMa[i] === null) continue;
+    rows.push({
+      date: dates[i],
+      price: prices[i],
+      high52: highs[i],
+      low52: lows[i],
+      volume: volumes[i],
+      ret1d: ret1d[i],
+      highR: highR[i],
+      lowR: lowR[i],
+      volMa: volMa[i],
+    });
+  }
+  return rows;
+}
+
+// ─── CNN 모델 시뮬레이션 ────────────────────────────────────────────────
+// StandardScaler → Conv1D(causal) → MaxPool → Dense → output
+function standardize(window4d) {
+  // window4d: Array[20][4]
+  const means = [0, 0, 0, 0], stds = [0, 0, 0, 0];
+  const n = window4d.length;
+  for (let ch = 0; ch < 4; ch++) {
+    let sum = 0;
+    for (let t = 0; t < n; t++) sum += window4d[t][ch];
+    means[ch] = sum / n;
+    let variance = 0;
+    for (let t = 0; t < n; t++) variance += (window4d[t][ch] - means[ch]) ** 2;
+    stds[ch] = Math.sqrt(variance / n + 1e-8);
+  }
+  return window4d.map(row => row.map((v, ch) => (v - means[ch]) / stds[ch]));
+}
+
+function causalConv1D(x, filters, kernelSize) {
+  // x: [T, C], filters: [kernelSize, C, F] (simulated with random-seeded weights)
+  const T = x.length;
+  const C = x[0].length;
+  const F = filters.length;
+  const out = [];
+  for (let t = 0; t < T; t++) {
+    const feat = Array(F).fill(0);
+    for (let f = 0; f < F; f++) {
+      for (let k = 0; k < kernelSize; k++) {
+        const src = t - kernelSize + 1 + k;
+        if (src < 0) continue;
+        for (let c = 0; c < C; c++) {
+          feat[f] += x[src][c] * filters[f][k][c];
+        }
+      }
+      feat[f] = Math.max(0, feat[f]); // ReLU
+    }
+    out.push(feat);
+  }
+  return out;
+}
+
+function maxPool1D(x, poolSize) {
+  const out = [];
+  for (let i = 0; i + poolSize <= x.length; i += poolSize) {
+    const pooled = x[0].map((_, ch) => {
+      let m = -Infinity;
+      for (let j = i; j < i + poolSize; j++) m = Math.max(m, x[j][ch]);
+      return m;
+    });
+    out.push(pooled);
+  }
+  return out;
+}
+
+// 고정 가중치 CNN 시뮬레이션 (seed=777로 초기화)
+let _cnnWeights = null;
+function getCNNWeights() {
+  if (_cnnWeights) return _cnnWeights;
+  const rng = mulberry32(777);
+  const filters = []; // 32 filters, kernel=3, channels=4
+  for (let f = 0; f < 32; f++) {
+    const filt = [];
+    for (let k = 0; k < 3; k++) {
+      const ch = [];
+      for (let c = 0; c < 4; c++) ch.push(rng() * 2 - 1);
+      filt.push(ch);
+    }
+    filters.push(filt);
+  }
+  // Dense hidden [32 -> 32] + bias, output [32->1] + bias
+  const W1 = Array.from({length: 32}, () => Array.from({length: 32}, () => rng() * 0.2 - 0.1));
+  const b1 = Array.from({length: 32}, () => rng() * 0.1 - 0.05);
+  const W2 = Array.from({length: 32}, () => rng() * 0.05 - 0.025);
+  const b2 = rng() * 0.02 - 0.01;
+  _cnnWeights = { filters, W1, b1, W2, b2 };
+  return _cnnWeights;
+}
+
+function predictCNN(rows, lookback) {
+  if (rows.length < lookback) return null;
+  const recent = rows.slice(-lookback).map(r => [r.ret1d, r.highR, r.lowR, r.volMa]);
+  const scaled = standardize(recent);
+
+  const weights = getCNNWeights();
+  const convOut = causalConv1D(scaled, weights.filters, 3); // [20, 32]
+  const pooled = maxPool1D(convOut, 5);                     // [4, 32]
+  const flat = pooled.flat();                               // [128] — but we have [4*32=128]
+
+  // Flatten에서 128개가 생기므로 W1을 재맞춤 (간단히 첫 32개만 사용)
+  const h = flat.slice(0, 32);
+
+  // Hidden Dense [32 -> 32]
+  const hidden = Array(32).fill(0);
+  for (let i = 0; i < 32; i++) {
+    let sum = weights.b1[i];
+    for (let j = 0; j < 32; j++) sum += h[j] * weights.W1[i][j];
+    hidden[i] = Math.max(0, sum); // ReLU
+  }
+
+  // Output [32 -> 1]
+  let out = weights.b2;
+  for (let i = 0; i < 32; i++) out += hidden[i] * weights.W2[i];
+
+  // scale output to realistic range (~±5%)
+  const clipped = Math.max(-0.08, Math.min(0.08, out));
+  return clipped;
+}
+
+// ─── 차트 인스턴스 ──────────────────────────────────────────────────────
+let priceChartInst = null, retChartInst = null, volChartInst = null;
+
+function destroyCharts() {
+  if (priceChartInst) { priceChartInst.destroy(); priceChartInst = null; }
+  if (retChartInst)   { retChartInst.destroy(); retChartInst = null; }
+  if (volChartInst)   { volChartInst.destroy(); volChartInst = null; }
+}
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 600 },
+  plugins: {
+    legend: { display: false },
+    tooltip: { mode: 'index', intersect: false,
+      backgroundColor: '#1f2937',
+      borderColor: '#374151',
+      borderWidth: 1,
+      titleColor: '#9ca3af',
+      bodyColor: '#f9fafb',
+    }
+  },
+  scales: {
+    x: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', maxTicksLimit: 10, font: { size: 10 } } },
+    y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', font: { size: 10 } } }
+  }
+};
+
+function renderCharts(data, rows) {
+  const labels = data.dates;
+  const priceData = data.prices;
+
+  // Price Chart
+  priceChartInst = new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '주가', data: priceData, borderColor: '#3b82f6', borderWidth: 1.5,
+          pointRadius: 0, tension: 0.3, fill: true,
+          backgroundColor: (ctx) => {
+            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
+            g.addColorStop(0, '#3b82f620'); g.addColorStop(1, '#3b82f600');
+            return g;
+          }
+        },
+        { label: '52주 고가', data: data.highs, borderColor: '#10b981', borderWidth: 1,
+          borderDash: [4, 4], pointRadius: 0 },
+        { label: '52주 저가', data: data.lows, borderColor: '#ef4444', borderWidth: 1,
+          borderDash: [4, 4], pointRadius: 0 },
+      ]
+    },
+    options: { ...CHART_DEFAULTS, scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v.toLocaleString() } } } }
+  });
+
+  // ret_1d chart (bar)
+  const retLabels = rows.map(r => r.date);
+  const retVals = rows.map(r => r.ret1d * 100);
+  retChartInst = new Chart(document.getElementById('retChart'), {
+    type: 'bar',
+    data: {
+      labels: retLabels,
+      datasets: [{ label: 'ret_1d (%)', data: retVals,
+        backgroundColor: retVals.map(v => v >= 0 ? '#10b98160' : '#ef444460'),
+        borderColor: retVals.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+        borderWidth: 1,
+      }]
+    },
+    options: { ...CHART_DEFAULTS, scales: { ...CHART_DEFAULTS.scales, x: { ...CHART_DEFAULTS.scales.x, ticks: { display: false } } } }
+  });
+
+  // vol/ma60 chart
+  const volLabels = rows.map(r => r.date);
+  const volVals = rows.map(r => r.volMa);
+  volChartInst = new Chart(document.getElementById('volChart'), {
+    type: 'bar',
+    data: {
+      labels: volLabels,
+      datasets: [{ label: 'vol/MA60', data: volVals,
+        backgroundColor: volVals.map(v => v >= 1 ? '#f59e0b60' : '#6b7280a0'),
+        borderColor: volVals.map(v => v >= 1 ? '#f59e0b' : '#6b7280'),
+        borderWidth: 1,
+      }]
+    },
+    options: { ...CHART_DEFAULTS, scales: { ...CHART_DEFAULTS.scales, x: { ...CHART_DEFAULTS.scales.x, ticks: { display: false } } } }
+  });
+}
+
+// ─── 테이블 렌더링 ──────────────────────────────────────────────────────
+function renderTables(rows) {
+  const recent = rows.slice(-20);
+
+  const rawBody = document.getElementById('rawTableBody');
+  rawBody.innerHTML = recent.slice().reverse().map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td>${r.price.toLocaleString()}</td>
+      <td>${r.high52.toLocaleString()}</td>
+      <td>${r.low52.toLocaleString()}</td>
+      <td>${r.volume.toLocaleString()}</td>
+    </tr>`).join('');
+
+  const featBody = document.getElementById('featTableBody');
+  featBody.innerHTML = recent.slice().reverse().map((r, i) => {
+    const isMost = i === 0;
+    const retCls = r.ret1d >= 0 ? 'td-up' : 'td-down';
+    return `
+    <tr${isMost ? ' style="font-weight:600;"' : ''}>
+      <td>${r.date}${isMost ? ' ★' : ''}</td>
+      <td class="${retCls}">${(r.ret1d * 100).toFixed(3)}</td>
+      <td>${r.highR.toFixed(4)}</td>
+      <td>${r.lowR.toFixed(4)}</td>
+      <td class="${r.volMa >= 1 ? 'td-up' : ''}">${r.volMa.toFixed(3)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── 신호 박스 업데이트 ─────────────────────────────────────────────────
+function updateSignal(predictedReturn) {
+  const box = document.getElementById('signalBox');
+  const pct = (predictedReturn * 100).toFixed(2);
+  const isBuy = predictedReturn > 0;
+  const conf = Math.min(100, Math.abs(predictedReturn) / 0.08 * 100).toFixed(0);
+
+  box.className = 'signal-box ' + (isBuy ? 'buy' : 'sell');
+  box.innerHTML = `
+    <div class="signal-icon">${isBuy ? '🔴' : '🔵'}</div>
+    <div class="signal-label">${isBuy ? 'BUY (매수)' : 'SELL / HOLD'}</div>
+    <div class="signal-return">
+      예측 5일 수익률<br>
+      <strong>${pct > 0 ? '+' : ''}${pct}%</strong>
+    </div>
+    <div class="confidence-bar">
+      <div class="confidence-fill" style="width:${conf}%"></div>
+    </div>
+    <div class="signal-confidence">신뢰도: ${conf}% | 예측 로그수익률 ${(predictedReturn).toFixed(5)}</div>
+  `;
+}
+
+// ─── 지표 업데이트 ──────────────────────────────────────────────────────
+function updateIndicators(lastRow) {
+  const retVal = lastRow.ret1d * 100;
+  const retEl = document.getElementById('ind-ret');
+  retEl.textContent = (retVal >= 0 ? '+' : '') + retVal.toFixed(3) + '%';
+  retEl.className = 'indicator-value ' + (retVal >= 0 ? 'up' : 'down');
+  document.getElementById('bar-ret').style.width = Math.min(100, Math.abs(retVal) * 20 + 50) + '%';
+
+  document.getElementById('ind-high').textContent = lastRow.highR.toFixed(4);
+  document.getElementById('bar-high').style.width = (lastRow.highR * 100).toFixed(0) + '%';
+
+  document.getElementById('ind-low').textContent = lastRow.lowR.toFixed(4);
+  document.getElementById('bar-low').style.width = Math.min(100, (lastRow.lowR - 1) * 100 + 50) + '%';
+
+  const volEl = document.getElementById('ind-vol');
+  volEl.textContent = lastRow.volMa.toFixed(3) + 'x';
+  volEl.className = 'indicator-value ' + (lastRow.volMa >= 1 ? 'up' : '');
+  document.getElementById('bar-vol').style.width = Math.min(100, lastRow.volMa * 50) + '%';
+}
+
+// ─── Stats Row 업데이트 ─────────────────────────────────────────────────
+function updateStats(rows, predictedReturn) {
+  const last = rows[rows.length - 1];
+  const prev = rows[rows.length - 2];
+  const chg = ((last.price - prev.price) / prev.price * 100).toFixed(2);
+  const chgCls = chg >= 0 ? 'up' : 'down';
+
+  document.getElementById('stat-price').textContent = last.price.toLocaleString() + '원';
+  document.getElementById('stat-price-chg').className = 'stat-change ' + chgCls;
+  document.getElementById('stat-price-chg').textContent = (chg >= 0 ? '▲' : '▼') + ' ' + Math.abs(chg) + '%';
+
+  const pct = (predictedReturn * 100).toFixed(2);
+  document.getElementById('stat-ret').textContent = (pct >= 0 ? '+' : '') + pct + '%';
+  document.getElementById('stat-ret').style.color = predictedReturn >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('stat-ret-dir').className = 'stat-change ' + (predictedReturn >= 0 ? 'up' : 'down');
+  document.getElementById('stat-ret-dir').textContent = predictedReturn >= 0 ? '▲ 상승 예상' : '▼ 하락 예상';
+
+  document.getElementById('stat-high').textContent = (last.highR * 100).toFixed(1) + '%';
+  document.getElementById('stat-high-sub').className = 'stat-change';
+  document.getElementById('stat-high-sub').style.color = 'var(--text-dim)';
+  document.getElementById('stat-high-sub').textContent = '52주 고가 기준';
+
+  document.getElementById('stat-low').textContent = (last.lowR * 100).toFixed(1) + '%';
+  document.getElementById('stat-low-sub').className = 'stat-change';
+  document.getElementById('stat-low-sub').style.color = 'var(--text-dim)';
+  document.getElementById('stat-low-sub').textContent = '52주 저가 기준';
+}
+
+// ─── 메인 분석 함수 ─────────────────────────────────────────────────────
+function runAnalysis() {
+  const params = {
+    priceMin: parseInt(document.getElementById('priceMin').value) || 50000,
+    priceMax: parseInt(document.getElementById('priceMax').value) || 100000,
+    high52w:  parseInt(document.getElementById('high52w').value)  || 120000,
+    low52w:   parseInt(document.getElementById('low52w').value)   || 40000,
+    periods:  parseInt(document.getElementById('periods').value)  || 100,
+    seed:     parseInt(document.getElementById('seed').value)     || 42,
+    lookback: parseInt(document.getElementById('lookback').value) || 20,
+  };
+
+  if (params.priceMin >= params.priceMax) { showToast('하한 주가가 상한보다 작아야 합니다.', 'error'); return; }
+  if (params.high52w <= params.priceMax) { showToast('52주 고가는 상한 주가보다 커야 합니다.', 'error'); return; }
+  if (params.low52w >= params.priceMin) { showToast('52주 저가는 하한 주가보다 작아야 합니다.', 'error'); return; }
+
+  const data = generateData(params);
+  const rows = computeFeatures(data);
+
+  if (rows.length < params.lookback) {
+    showToast(`데이터 부족: 최소 ${60 + params.lookback}일 필요합니다.`, 'error');
+    return;
+  }
+
+  const predicted = predictCNN(rows, params.lookback);
+  if (predicted === null) { showToast('예측 실패: 데이터를 확인하세요.', 'error'); return; }
+
+  destroyCharts();
+  renderCharts(data, rows);
+  renderTables(rows);
+  updateSignal(predicted);
+  updateIndicators(rows[rows.length - 1]);
+  updateStats(rows, predicted);
+
+  showToast(`분석 완료! 예측 수익률: ${(predicted * 100).toFixed(2)}%`, 'success');
+}
+
+// ─── 랜덤 시드 버튼 ────────────────────────────────────────────────────
+function randomSeed() {
+  document.getElementById('seed').value = Math.floor(Math.random() * 9999);
+  runAnalysis();
+}
+
+// ─── 탭 전환 ────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['raw', 'feat'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── 토스트 알림 ────────────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.classList.remove('show'); }, 3000);
+}
+
+// ─── 초기 실행 ──────────────────────────────────────────────────────────
+runAnalysis();
+</script>
+</body>
+</html>
