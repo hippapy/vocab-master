@@ -647,7 +647,10 @@
 
         <!-- Paste area -->
         <div class="control-group" style="margin-bottom:6px;">
-          <label>또는 직접 붙여넣기 (Ctrl+V)</label>
+          <label style="display:flex;justify-content:space-between;align-items:center;">
+            <span>또는 직접 붙여넣기 (Ctrl+V)</span>
+            <span onclick="clearCsv()" style="cursor:pointer;color:var(--red);font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid var(--red);line-height:1.4;" title="데이터 지우기">✕ 지우기</span>
+          </label>
           <textarea class="csv-textarea" id="csvPaste"
             placeholder="date,price,52w_high,52w_low,volume&#10;2025-01-02,88000,120000,40000,5000000&#10;..."></textarea>
         </div>
@@ -1377,6 +1380,14 @@ function runAnalysisCsv() {
   updateStats(rows, predicted);
 
   showToast(`CSV 분석 완료! ${data.dates.length}행 | 예측 수익률: ${(predicted * 100).toFixed(2)}%`, 'success');
+}
+
+// ─── CSV 지우기 ─────────────────────────────────────────────────────────
+function clearCsv() {
+  document.getElementById('csvPaste').value = '';
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('csvStats').classList.remove('show');
+  showToast('데이터가 지워졌습니다.', '');
 }
 
 // ─── 샘플 CSV 불러오기 ──────────────────────────────────────────────────
