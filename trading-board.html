@@ -474,6 +474,92 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .toast.success { border-color: var(--green); }
   .toast.error { border-color: var(--red); }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 16px;
+    border: 1px solid var(--surface3);
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 7px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .mode-btn.active { background: var(--accent); color: white; }
+
+  /* CSV input area */
+  .csv-drop-zone {
+    border: 2px dashed var(--surface3);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .csv-drop-zone:hover, .csv-drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #3b82f610;
+  }
+  .csv-drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .csv-drop-icon { font-size: 24px; margin-bottom: 6px; }
+  .csv-drop-text { font-size: 12px; color: var(--text-dim); }
+  .csv-drop-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+  .csv-textarea {
+    width: 100%;
+    height: 130px;
+    background: var(--surface2);
+    border: 1px solid var(--surface3);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    padding: 10px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.5;
+  }
+  .csv-textarea:focus { border-color: var(--accent); }
+  .csv-textarea::placeholder { color: var(--text-muted); }
+
+  .csv-format-hint {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 10px;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+
+  .csv-stats {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .csv-stats.show { display: block; }
+  .csv-stats strong { color: var(--green); }
 </style>
 </head>
 <body>
@@ -503,49 +589,80 @@
     <div class="card">
       <div class="card-title"><span>⚙️</span> 데이터 설정</div>
 
-      <div class="control-group">
-        <label>주가 범위 (하한 · 상한, 원)</label>
-        <div style="display:flex;gap:8px;">
-          <input type="number" id="priceMin" value="50000" step="1000">
-          <input type="number" id="priceMax" value="100000" step="1000">
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeBtn-dummy" onclick="setMode('dummy')">🎲 더미 생성</button>
+        <button class="mode-btn" id="modeBtn-csv" onclick="setMode('csv')">📂 직접 입력</button>
+      </div>
+
+      <!-- Dummy Mode -->
+      <div id="mode-dummy">
+        <div class="control-group">
+          <label>주가 범위 (하한 · 상한, 원)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="priceMin" value="50000" step="1000">
+            <input type="number" id="priceMax" value="100000" step="1000">
+          </div>
         </div>
+        <div class="control-group">
+          <label>52주 고가 (원)</label>
+          <input type="number" id="high52w" value="120000" step="1000">
+        </div>
+        <div class="control-group">
+          <label>52주 저가 (원)</label>
+          <input type="number" id="low52w" value="40000" step="1000">
+        </div>
+        <div class="control-group">
+          <label>데이터 기간 (일) <span class="range-val" id="periodsVal">100</span></label>
+          <input type="range" id="periods" min="80" max="500" value="100"
+                 oninput="document.getElementById('periodsVal').textContent=this.value">
+        </div>
+        <div class="control-group">
+          <label>룩백 윈도우 (일) <span class="range-val" id="lookbackVal">20</span></label>
+          <input type="range" id="lookback" min="10" max="60" value="20"
+                 oninput="document.getElementById('lookbackVal').textContent=this.value">
+        </div>
+        <div class="control-group">
+          <label>랜덤 시드</label>
+          <input type="number" id="seed" value="42" min="0" max="9999">
+        </div>
+        <button class="btn btn-primary" onclick="runAnalysis()">🔍 분석 실행</button>
+        <button class="btn btn-secondary" onclick="randomSeed()">🎲 랜덤 데이터 생성</button>
       </div>
 
-      <div class="control-group">
-        <label>52주 고가 (원)</label>
-        <input type="number" id="high52w" value="120000" step="1000">
-      </div>
+      <!-- CSV Mode -->
+      <div id="mode-csv" style="display:none;">
+        <div class="csv-format-hint">date, price, 52w_high, 52w_low, volume<br>
+2025-01-02, 88000, 120000, 40000, 5000000<br>
+2025-01-03, 87500, 120000, 40000, 4200000<br>
+<span style="color:#6b7280">※ 쉼표·탭 구분 / 헤더 있어도 없어도 OK</span></div>
 
-      <div class="control-group">
-        <label>52주 저가 (원)</label>
-        <input type="number" id="low52w" value="40000" step="1000">
-      </div>
+        <!-- File upload -->
+        <div class="csv-drop-zone" id="dropZone">
+          <input type="file" id="csvFileInput" accept=".csv,.txt,.tsv" onchange="handleFileUpload(event)">
+          <div class="csv-drop-icon">📁</div>
+          <div class="csv-drop-text">CSV 파일을 클릭하거나 드래그</div>
+          <div class="csv-drop-sub">.csv · .txt · .tsv 지원</div>
+        </div>
 
-      <div class="control-group">
-        <label>
-          데이터 기간 (일)
-          <span class="range-val" id="periodsVal">100</span>
-        </label>
-        <input type="range" id="periods" min="80" max="500" value="100"
-               oninput="document.getElementById('periodsVal').textContent=this.value">
-      </div>
+        <!-- Paste area -->
+        <div class="control-group" style="margin-bottom:6px;">
+          <label>또는 직접 붙여넣기 (Ctrl+V)</label>
+          <textarea class="csv-textarea" id="csvPaste"
+            placeholder="date,price,52w_high,52w_low,volume&#10;2025-01-02,88000,120000,40000,5000000&#10;..."></textarea>
+        </div>
 
-      <div class="control-group">
-        <label>
-          룩백 윈도우 (일)
-          <span class="range-val" id="lookbackVal">20</span>
-        </label>
-        <input type="range" id="lookback" min="10" max="60" value="20"
-               oninput="document.getElementById('lookbackVal').textContent=this.value">
-      </div>
+        <div class="csv-stats" id="csvStats"></div>
 
-      <div class="control-group">
-        <label>랜덤 시드</label>
-        <input type="number" id="seed" value="42" min="0" max="9999">
-      </div>
+        <div class="control-group">
+          <label>룩백 윈도우 (일) <span class="range-val" id="lookbackValCsv">20</span></label>
+          <input type="range" id="lookbackCsv" min="10" max="60" value="20"
+                 oninput="document.getElementById('lookbackValCsv').textContent=this.value">
+        </div>
 
-      <button class="btn btn-primary" onclick="runAnalysis()">🔍 분석 실행</button>
-      <button class="btn btn-secondary" onclick="randomSeed()">🎲 랜덤 데이터 생성</button>
+        <button class="btn btn-primary" onclick="runAnalysisCsv()">🔍 CSV 분석 실행</button>
+        <button class="btn btn-secondary" onclick="loadSampleCsv()">📋 샘플 데이터 불러오기</button>
+      </div>
     </div>
 
     <!-- Signal Card -->
@@ -1144,6 +1261,141 @@ function runAnalysis() {
 function randomSeed() {
   document.getElementById('seed').value = Math.floor(Math.random() * 9999);
   runAnalysis();
+}
+
+// ─── 모드 전환 ──────────────────────────────────────────────────────────
+function setMode(mode) {
+  document.getElementById('mode-dummy').style.display = mode === 'dummy' ? '' : 'none';
+  document.getElementById('mode-csv').style.display   = mode === 'csv'   ? '' : 'none';
+  document.getElementById('modeBtn-dummy').classList.toggle('active', mode === 'dummy');
+  document.getElementById('modeBtn-csv').classList.toggle('active', mode === 'csv');
+}
+
+// ─── CSV 파싱 ───────────────────────────────────────────────────────────
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return null;
+
+  // 구분자 자동 감지 (쉼표 vs 탭)
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+
+  // 헤더 감지: 첫 줄 첫 컬럼이 숫자가 아니면 헤더로 간주
+  let startIdx = 0;
+  const firstCell = lines[0].split(delim)[0].trim();
+  if (isNaN(Date.parse(firstCell)) && isNaN(Number(firstCell))) startIdx = 1;
+
+  const dates = [], prices = [], highs = [], lows = [], volumes = [];
+
+  for (let i = startIdx; i < lines.length; i++) {
+    const cols = lines[i].split(delim).map(c => c.trim().replace(/"/g, ''));
+    if (cols.length < 5) continue;
+    const [d, p, h, l, v] = cols;
+    const pn = parseFloat(p.replace(/,/g, ''));
+    const hn = parseFloat(h.replace(/,/g, ''));
+    const ln = parseFloat(l.replace(/,/g, ''));
+    const vn = parseFloat(v.replace(/,/g, ''));
+    if (isNaN(pn) || isNaN(hn) || isNaN(ln) || isNaN(vn)) continue;
+    dates.push(d);
+    prices.push(pn);
+    highs.push(hn);
+    lows.push(ln);
+    volumes.push(vn);
+  }
+
+  return dates.length >= 10 ? { dates, prices, highs, lows, volumes } : null;
+}
+
+// ─── CSV 파일 업로드 핸들러 ─────────────────────────────────────────────
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('csvPaste').value = ev.target.result;
+    updateCsvStats(ev.target.result);
+    showToast(`📂 ${file.name} 로드 완료`, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ─── 붙여넣기 이벤트 ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('csvPaste');
+  ta.addEventListener('input', () => updateCsvStats(ta.value));
+
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      ta.value = ev.target.result;
+      updateCsvStats(ev.target.result);
+      showToast(`📂 ${file.name} 드래그 로드 완료`, 'success');
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+});
+
+function updateCsvStats(text) {
+  const data = parseCsv(text);
+  const el = document.getElementById('csvStats');
+  if (!data) { el.classList.remove('show'); return; }
+  el.classList.add('show');
+  el.innerHTML = `파싱 결과: <strong>${data.dates.length}행</strong> |
+    기간: ${data.dates[0]} ~ ${data.dates[data.dates.length-1]} |
+    가격범위: ${Math.min(...data.prices).toLocaleString()} ~ ${Math.max(...data.prices).toLocaleString()}`;
+}
+
+// ─── CSV 분석 실행 ──────────────────────────────────────────────────────
+function runAnalysisCsv() {
+  const text = document.getElementById('csvPaste').value.trim();
+  if (!text) { showToast('데이터를 붙여넣거나 파일을 업로드하세요.', 'error'); return; }
+
+  const data = parseCsv(text);
+  if (!data) { showToast('파싱 실패: 형식을 확인하세요. (date, price, 52w_high, 52w_low, volume)', 'error'); return; }
+
+  const lookback = parseInt(document.getElementById('lookbackCsv').value) || 20;
+  const rows = computeFeatures(data);
+
+  if (rows.length < lookback) {
+    showToast(`데이터 부족: 피처 계산 후 ${rows.length}행 — 최소 ${lookback + 60}행 필요합니다.`, 'error');
+    return;
+  }
+
+  const predicted = predictCNN(rows, lookback);
+  if (predicted === null) { showToast('예측 실패', 'error'); return; }
+
+  destroyCharts();
+  renderCharts(data, rows);
+  renderTables(rows);
+  updateSignal(predicted);
+  updateIndicators(rows[rows.length - 1]);
+  updateStats(rows, predicted);
+
+  showToast(`CSV 분석 완료! ${data.dates.length}행 | 예측 수익률: ${(predicted * 100).toFixed(2)}%`, 'success');
+}
+
+// ─── 샘플 CSV 불러오기 ──────────────────────────────────────────────────
+function loadSampleCsv() {
+  const rng = mulberry32(99);
+  const lines = ['date,price,52w_high,52w_low,volume'];
+  let d = new Date(2024, 0, 2);
+  let price = 75000;
+  for (let i = 0; i < 150; i++) {
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    price = Math.max(50000, Math.min(110000, price + Math.round((rng() - 0.5) * 3000)));
+    const vol = Math.floor(rng() * 20000000 + 2000000);
+    lines.push(`${d.toISOString().slice(0,10)},${price},120000,40000,${vol}`);
+    d = new Date(d); d.setDate(d.getDate() + 1);
+  }
+  const csv = lines.join('\n');
+  document.getElementById('csvPaste').value = csv;
+  updateCsvStats(csv);
+  showToast('샘플 데이터 150행 로드 완료', 'success');
 }
 
 // ─── 탭 전환 ────────────────────────────────────────────────────────────
