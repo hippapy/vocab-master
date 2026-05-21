@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KODEX 레버리지 필승전략 대시보드</title>
+<script src="./chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e1a; --surface: #111827; --surface2: #1f2937; --surface3: #374151;
+  --accent: #3b82f6; --accent2: #6366f1; --green: #10b981; --red: #ef4444;
+  --yellow: #f59e0b; --text: #f9fafb; --text-dim: #9ca3af; --border: #1f2937;
+}
+body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.header {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border-bottom: 1px solid #1e3a5f;
+  padding: 16px 28px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.signal-badge { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+.signal-buy { background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; }
+.signal-sell { background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444; }
+
+.main { padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+
+/* 전략 규칙 박스 */
+.strategy-rule {
+  background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.1));
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.rule-title { font-size: 13px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; min-width: 80px; }
+.rule-items { display: flex; gap: 12px; flex-wrap: wrap; }
+.rule-item {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px;
+}
+.rule-item span { color: var(--yellow); font-weight: 700; }
+.rule-arrow { font-size: 18px; color: var(--text-dim); }
+
+/* 성과 카드 */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border-radius: 12px; padding: 16px; border: 1px solid var(--border); }
+.stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+.stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.green { color: var(--green); } .red { color: var(--red); } .blue { color: var(--accent); } .yellow { color: var(--yellow); }
+
+/* 현재 시그널 패널 */
+.signal-panel { background: var(--surface); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid var(--border); }
+.signal-panel h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.signal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.sig-item { background: var(--surface2); border-radius: 8px; padding: 10px 12px; }
+.sig-name { font-size: 11px; color: var(--text-dim); }
+.sig-val { font-size: 15px; font-weight: 700; margin-top: 2px; }
+.sig-ok { color: var(--green); } .sig-fail { color: var(--red); } .sig-warn { color: var(--yellow); }
+
+/* 탭 */
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab { padding: 8px 16px; border-radius: 8px; border: none; background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+.tab.active { background: var(--accent); color: white; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* 차트 */
+.chart-card { background: var(--surface); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); }
+.chart-card h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.chart-wrap { position: relative; }
+.chart-period { display: flex; gap: 6px; }
+.period-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 11px; font-weight: 600; }
+.period-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* 거래 테이블 */
+.trade-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.trade-table th { text-align: left; padding: 8px 12px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.trade-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.trade-table tr:hover td { background: rgba(255,255,255,0.03); }
+.badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.badge-buy { background: rgba(16,185,129,0.2); color: var(--green); }
+.badge-sell { background: rgba(239,68,68,0.2); color: var(--red); }
+.badge-win { background: rgba(16,185,129,0.15); color: var(--green); }
+.badge-loss { background: rgba(239,68,68,0.15); color: var(--red); }
+
+/* 분석 요약 */
+.insight-box { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.08)); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+.insight-box h3 { color: var(--green); font-size: 14px; margin-bottom: 10px; }
+.insight-box ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.insight-box li { font-size: 13px; color: var(--text-dim); display: flex; gap: 8px; }
+.insight-box li::before { content: '▸'; color: var(--accent); }
+
+.range-info { font-size: 11px; color: var(--text-dim); background: var(--surface2); padding: 4px 10px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">📈</div>
+    <div>
+      <h1>KODEX 레버리지 (122630) 필승전략</h1>
+      <div class="header-sub">MA10/MA60 크로스 + RSI > 35 | 2019-05-21 ~ 2026-05-21 (1,720일)</div>
+    </div>
+  </div>
+  <div id="currentSignal" class="signal-badge signal-buy">🟢 현재: 매수 유지</div>
+</div>
+
+<div class="main">
+
+  <!-- 전략 규칙 -->
+  <div class="strategy-rule">
+    <div class="rule-title">📌 전략 규칙</div>
+    <div class="rule-items">
+      <div class="rule-item">📥 <span>진입</span>: MA10 > MA60 &amp; RSI > 35</div>
+      <div class="rule-arrow">→</div>
+      <div class="rule-item">📤 <span>청산</span>: MA10 < MA60 OR RSI ≤ 35</div>
+      <div class="rule-arrow">→</div>
+      <div class="rule-item">💰 <span>수수료</span>: 편도 0.3% (매수+매도 0.6%)</div>
+      <div class="rule-arrow">→</div>
+      <div class="rule-item">📊 <span>리밸런싱</span>: 매일 종가 기준 신호 체크</div>
+    </div>
+  </div>
+
+  <!-- 성과 지표 -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">총 수익률</div>
+      <div class="stat-value green" id="totalReturn">+881%</div>
+      <div class="stat-sub">원금 1천만 → 9,810만원</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">CAGR (연환산)</div>
+      <div class="stat-value blue">38.5%</div>
+      <div class="stat-sub">vs Buy&Hold 48.4%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">최대낙폭 (MDD)</div>
+      <div class="stat-value red">-52.3%</div>
+      <div class="stat-sub">vs B&H -59.8%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">샤프 지수</div>
+      <div class="stat-value yellow">1.07</div>
+      <div class="stat-sub">vs B&H 1.07</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">총 트레이드</div>
+      <div class="stat-value blue">31회</div>
+      <div class="stat-sub">연평균 약 4.4회</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">승률</div>
+      <div class="stat-value green">45.2%</div>
+      <div class="stat-sub">승 14 / 패 17</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">손익비</div>
+      <div class="stat-value green">5.68</div>
+      <div class="stat-sub">평균이익/평균손실</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">시장 체류 비율</div>
+      <div class="stat-value blue">58.6%</div>
+      <div class="stat-sub">나머지 41.4% 현금</div>
+    </div>
+  </div>
+
+  <!-- 현재 시그널 -->
+  <div class="signal-panel">
+    <h3>⚡ 현재 시그널 상태 (2026-05-21)</h3>
+    <div class="signal-grid">
+      <div class="sig-item">
+        <div class="sig-name">종가</div>
+        <div class="sig-val blue">170,660</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">MA10</div>
+        <div class="sig-val sig-ok">161,137 ✅</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">MA60</div>
+        <div class="sig-val blue">105,475</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">MA10 > MA60</div>
+        <div class="sig-val sig-ok">✅ 골든크로스</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">RSI (14)</div>
+        <div class="sig-val sig-ok">68.2 ✅</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">MACD 히스토그램</div>
+        <div class="sig-val sig-warn">-559 ⚠️</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">변동성 (20일)</div>
+        <div class="sig-val sig-warn">113.9% ⚠️</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">MA60 기울기</div>
+        <div class="sig-val sig-ok">+5.46% ✅</div>
+      </div>
+      <div class="sig-item">
+        <div class="sig-name">필승전략 신호</div>
+        <div class="sig-val sig-ok" style="font-size:17px;">🟢 매수 유지</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('equity')">📈 수익 곡선</button>
+    <button class="tab" onclick="showTab('price')">💹 가격 차트</button>
+    <button class="tab" onclick="showTab('indicators')">📊 보조지표</button>
+    <button class="tab" onclick="showTab('trades')">📋 거래 내역</button>
+    <button class="tab" onclick="showTab('analysis')">🔍 전략 분석</button>
+  </div>
+
+  <!-- 탭 1: 수익 곡선 -->
+  <div id="tab-equity" class="tab-content active">
+    <div class="chart-card">
+      <h3>
+        전략 vs Buy&Hold 자산 곡선
+        <div class="chart-period">
+          <button class="period-btn active" onclick="setEquityRange('all', this)">전체</button>
+          <button class="period-btn" onclick="setEquityRange('3y', this)">3년</button>
+          <button class="period-btn" onclick="setEquityRange('1y', this)">1년</button>
+          <button class="period-btn" onclick="setEquityRange('6m', this)">6개월</button>
+        </div>
+      </h3>
+      <div class="chart-wrap"><canvas id="equityChart" height="100"></canvas></div>
+    </div>
+    <div class="insight-box">
+      <h3>💡 수익 곡선 해석</h3>
+      <ul>
+        <li>2020-2021 COVID 회복 랠리에서 전략이 Buy&Hold를 앞섰으나 이후 횡보</li>
+        <li>2022-2024 하락장에서 전략이 일부 구간을 현금으로 보내며 방어</li>
+        <li>2025-2026 대폭등 구간(+245%, +237%)에서 두 전략 모두 대규모 수익</li>
+        <li>손익비 5.68: 패배 시 소손실, 승리 시 대수익 구조가 핵심</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 탭 2: 가격 차트 -->
+  <div id="tab-price" class="tab-content">
+    <div class="chart-card">
+      <h3>
+        KODEX 레버리지 가격 + MA10/MA60 + 매매 신호
+        <div class="chart-period">
+          <button class="period-btn active" onclick="setPriceRange('all', this)">전체</button>
+          <button class="period-btn" onclick="setPriceRange('3y', this)">3년</button>
+          <button class="period-btn" onclick="setPriceRange('1y', this)">1년</button>
+          <button class="period-btn" onclick="setPriceRange('6m', this)">6개월</button>
+        </div>
+      </h3>
+      <div class="chart-wrap"><canvas id="priceChart" height="110"></canvas></div>
+    </div>
+    <div class="insight-box">
+      <h3>💡 차트 읽기</h3>
+      <ul>
+        <li>🟢 삼각형 = 매수 진입 (MA10이 MA60 위로 돌파 + RSI > 35)</li>
+        <li>🔴 역삼각형 = 매도 청산 (MA10이 MA60 아래로 하락 또는 RSI ≤ 35)</li>
+        <li>파란선(MA10)이 주황선(MA60) 위에 있는 구간 = 보유 중</li>
+        <li>MA60의 방향(기울기)이 전략의 품질을 결정함</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 탭 3: 보조지표 -->
+  <div id="tab-indicators" class="tab-content">
+    <div class="chart-card">
+      <h3>RSI (14일)</h3>
+      <div class="chart-wrap"><canvas id="rsiChart" height="70"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>MACD</h3>
+      <div class="chart-wrap"><canvas id="macdChart" height="70"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 탭 4: 거래 내역 -->
+  <div id="tab-trades" class="tab-content">
+    <div class="chart-card">
+      <h3>전체 거래 내역 (31건)</h3>
+      <table class="trade-table" id="tradeTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>구분</th>
+            <th>날짜</th>
+            <th>가격</th>
+            <th>수익률</th>
+            <th>결과</th>
+          </tr>
+        </thead>
+        <tbody id="tradeBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 탭 5: 분석 -->
+  <div id="tab-analysis" class="tab-content">
+    <div class="chart-card">
+      <h3>연도별 전략 vs Buy&Hold 수익률</h3>
+      <div class="chart-wrap"><canvas id="yearChart" height="80"></canvas></div>
+    </div>
+    <div class="chart-card" style="margin-top:16px;">
+      <h3>트레이드별 수익률 분포</h3>
+      <div class="chart-wrap"><canvas id="pnlChart" height="80"></canvas></div>
+    </div>
+    <div class="insight-box" style="margin-top:16px;">
+      <h3>🎯 전략 핵심 인사이트</h3>
+      <ul>
+        <li><strong>왜 필터가 단순할수록 좋은가:</strong> 레버리지 ETF는 대세 상승 초기에 올라타는 것이 핵심. 복잡한 필터는 이 초기 진입을 막음</li>
+        <li><strong>승률 45% 해석:</strong> 승률이 낮아도 손익비 5.68이면 장기 기대수익 플러스. 잦은 소손실에 흔들리지 말 것</li>
+        <li><strong>MDD -52% 대처법:</strong> 포지션을 50%만 투자하면 MDD를 -26%로 낮출 수 있음 (단, CAGR도 약 19%로 감소)</li>
+        <li><strong>가장 위험한 구간:</strong> MA10이 MA60을 막 하향돌파하는 초기 하락장 → 신호가 뜨면 즉시 실행이 중요</li>
+        <li><strong>현재(2026-05) 상황:</strong> 강한 골든크로스 상태. RSI 68로 과열 아님. 단기 변동성 높으나 추세 유효</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── 데이터 로드 ───────────────────────────────────────────
+const DATA_URL = './kodex_data.json';
+let RAW = null;
+
+fetch(DATA_URL).then(r => r.json()).then(data => {
+  RAW = data;
+  initAll();
+});
+
+function initAll() {
+  buildTradeTable();
+  drawEquityChart('all');
+  drawPriceChart('all');
+  drawRsiChart();
+  drawMacdChart();
+  drawYearChart();
+  drawPnlChart();
+}
+
+// ─── 탭 전환 ──────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── 범위 필터 ─────────────────────────────────────────────
+function getRangeIdx(range) {
+  const n = RAW.dates.length;
+  if (range === 'all') return 0;
+  if (range === '3y') return Math.max(0, n - 756);
+  if (range === '1y') return Math.max(0, n - 252);
+  if (range === '6m') return Math.max(0, n - 126);
+  return 0;
+}
+
+// ─── 차트 공통 옵션 ────────────────────────────────────────
+const BASE_OPTS = {
+  responsive: true,
+  animation: false,
+  plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: '#6b7280', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+    y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+  }
+};
+
+let equityChart, priceChart, rsiChart, macdChart, yearChart, pnlChart;
+
+// ─── 수익 곡선 ─────────────────────────────────────────────
+function drawEquityChart(range) {
+  const s = getRangeIdx(range);
+  const labels = RAW.dates.slice(s);
+  const strat = RAW.strategy_equity.slice(s);
+  const bh = RAW.bh_equity.slice(s);
+  const base = strat[0];
+  const bhBase = bh[0];
+  const stratRet = strat.map(v => +((v / base - 1) * 100).toFixed(1));
+  const bhRet = bh.map(v => +((v / bhBase - 1) * 100).toFixed(1));
+
+  if (equityChart) equityChart.destroy();
+  equityChart = new Chart(document.getElementById('equityChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '필승전략 수익률(%)',
+          data: stratRet,
+          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)',
+          borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3
+        },
+        {
+          label: 'Buy&Hold 수익률(%)',
+          data: bhRet,
+          borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.05)',
+          borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, borderDash: [4,2]
+        }
+      ]
+    },
+    options: {
+      ...BASE_OPTS,
+      plugins: {
+        ...BASE_OPTS.plugins,
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y.toFixed(1)}%`
+          }
+        }
+      },
+      scales: {
+        ...BASE_OPTS.scales,
+        y: { ...BASE_OPTS.scales.y, ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function setEquityRange(r, btn) {
+  document.querySelectorAll('#tab-equity .period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawEquityChart(r);
+}
+
+// ─── 가격 차트 ─────────────────────────────────────────────
+function drawPriceChart(range) {
+  const s = getRangeIdx(range);
+  const labels = RAW.dates.slice(s);
+  const close = RAW.close.slice(s);
+  const ma10 = RAW.ma10.slice(s);
+  const ma60 = RAW.ma60.slice(s);
+  const sigs = RAW.signals.slice(s);
+  const trades = RAW.trades;
+
+  // 매수/매도 포인트
+  const buyPts = labels.map((d, i) => {
+    const t = trades.find(tr => tr.type === 'buy' && tr.date === d);
+    return t ? close[i] : null;
+  });
+  const sellPts = labels.map((d, i) => {
+    const t = trades.find(tr => tr.type === 'sell' && tr.date === d);
+    return t ? close[i] : null;
+  });
+
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'KODEX 레버리지',
+          data: close,
+          borderColor: '#f9fafb', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.1, order: 3
+        },
+        {
+          label: 'MA10',
+          data: ma10,
+          borderColor: '#3b82f6', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.3, order: 2
+        },
+        {
+          label: 'MA60',
+          data: ma60,
+          borderColor: '#f59e0b', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.3, order: 1
+        },
+        {
+          label: '매수',
+          data: buyPts,
+          borderColor: 'transparent', backgroundColor: '#10b981',
+          pointRadius: buyPts.map(v => v ? 7 : 0),
+          pointStyle: 'triangle',
+          showLine: false, order: 0
+        },
+        {
+          label: '매도',
+          data: sellPts,
+          borderColor: 'transparent', backgroundColor: '#ef4444',
+          pointRadius: sellPts.map(v => v ? 7 : 0),
+          pointStyle: 'rectRot',
+          showLine: false, order: 0
+        }
+      ]
+    },
+    options: {
+      ...BASE_OPTS,
+      scales: {
+        ...BASE_OPTS.scales,
+        y: { ...BASE_OPTS.scales.y, ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+function setPriceRange(r, btn) {
+  document.querySelectorAll('#tab-price .period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawPriceChart(r);
+}
+
+// ─── RSI 차트 ──────────────────────────────────────────────
+function drawRsiChart() {
+  const n = RAW.dates.length;
+  const s = Math.max(0, n - 504); // 2년
+  const labels = RAW.dates.slice(s);
+  const rsi = RAW.rsi.slice(s);
+
+  if (rsiChart) rsiChart.destroy();
+  rsiChart = new Chart(document.getElementById('rsiChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'RSI(14)',
+          data: rsi,
+          borderColor: '#a78bfa', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.3
+        }
+      ]
+    },
+    options: {
+      ...BASE_OPTS,
+      scales: {
+        x: BASE_OPTS.scales.x,
+        y: {
+          ...BASE_OPTS.scales.y,
+          min: 0, max: 100,
+          ticks: { color: '#6b7280', font: { size: 10 } }
+        }
+      },
+      plugins: {
+        ...BASE_OPTS.plugins,
+        annotation: undefined
+      }
+    },
+    plugins: [{
+      id: 'rsi-lines',
+      beforeDraw(chart) {
+        const { ctx, chartArea: { left, right, top, bottom }, scales: { y } } = chart;
+        const draw = (v, color) => {
+          const yPx = y.getPixelForValue(v);
+          ctx.save();
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(left, yPx);
+          ctx.lineTo(right, yPx);
+          ctx.stroke();
+          ctx.restore();
+        };
+        draw(70, 'rgba(239,68,68,0.5)');
+        draw(35, 'rgba(16,185,129,0.5)');
+        draw(30, 'rgba(16,185,129,0.3)');
+      }
+    }]
+  });
+}
+
+// ─── MACD 차트 ─────────────────────────────────────────────
+function drawMacdChart() {
+  const n = RAW.dates.length;
+  const s = Math.max(0, n - 504);
+  const labels = RAW.dates.slice(s);
+  const macd = RAW.macd.slice(s);
+  const signal = RAW.macd_signal.slice(s);
+  const hist = RAW.macd_hist.slice(s);
+
+  if (macdChart) macdChart.destroy();
+  macdChart = new Chart(document.getElementById('macdChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'MACD 히스토그램',
+          data: hist,
+          backgroundColor: hist.map(v => v >= 0 ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'),
+          order: 3
+        },
+        {
+          label: 'MACD',
+          data: macd,
+          type: 'line',
+          borderColor: '#3b82f6', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.3, order: 1
+        },
+        {
+          label: 'Signal',
+          data: signal,
+          type: 'line',
+          borderColor: '#f59e0b', borderWidth: 1.5,
+          pointRadius: 0, fill: false, tension: 0.3, order: 2
+        }
+      ]
+    },
+    options: BASE_OPTS
+  });
+}
+
+// ─── 연도별 차트 ───────────────────────────────────────────
+function drawYearChart() {
+  const yearData = {
+    '2019': { strat: null, bh: 23.4 },
+    '2020': { strat: null, bh: 67.5 },
+    '2021': { strat: null, bh: -3.9 },
+    '2022': { strat: null, bh: -46.6 },
+    '2023': { strat: null, bh: 47.9 },
+    '2024': { strat: null, bh: -26.7 },
+    '2025': { strat: null, bh: 245.5 },
+    '2026': { strat: null, bh: 237.0 }
+  };
+
+  // 연도별 전략 수익률 계산
+  const eq = RAW.strategy_equity;
+  const dates = RAW.dates;
+  for (const yr of Object.keys(yearData)) {
+    const inYear = dates.map((d, i) => ({ d, i })).filter(x => x.d.startsWith(yr));
+    if (inYear.length < 2) continue;
+    const first = eq[inYear[0].i];
+    const last = eq[inYear[inYear.length - 1].i];
+    yearData[yr].strat = +((last / first - 1) * 100).toFixed(1);
+  }
+
+  const labels = Object.keys(yearData);
+  const stratRet = labels.map(y => yearData[y].strat);
+  const bhRet = labels.map(y => yearData[y].bh);
+
+  if (yearChart) yearChart.destroy();
+  yearChart = new Chart(document.getElementById('yearChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '필승전략 (%)',
+          data: stratRet,
+          backgroundColor: stratRet.map(v => v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'),
+        },
+        {
+          label: 'Buy&Hold (%)',
+          data: bhRet,
+          backgroundColor: bhRet.map(v => v >= 0 ? 'rgba(99,102,241,0.5)' : 'rgba(239,68,68,0.4)'),
+        }
+      ]
+    },
+    options: {
+      ...BASE_OPTS,
+      scales: {
+        ...BASE_OPTS.scales,
+        y: { ...BASE_OPTS.scales.y, ticks: { color: '#6b7280', callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+// ─── PnL 분포 차트 ─────────────────────────────────────────
+function drawPnlChart() {
+  const sells = RAW.trades.filter(t => t.type === 'sell');
+  const pnls = sells.map(t => t.pnl);
+  const colors = pnls.map(v => v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
+  const labels = sells.map((t, i) => `#${i + 1} ${t.date}`);
+
+  if (pnlChart) pnlChart.destroy();
+  pnlChart = new Chart(document.getElementById('pnlChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '트레이드 수익률 (%)',
+        data: pnls,
+        backgroundColor: colors
+      }]
+    },
+    options: {
+      ...BASE_OPTS,
+      scales: {
+        x: { ...BASE_OPTS.scales.x, ticks: { color: '#6b7280', maxTicksLimit: 15, font: { size: 9 } } },
+        y: { ...BASE_OPTS.scales.y, ticks: { color: '#6b7280', callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+// ─── 거래 테이블 ───────────────────────────────────────────
+function buildTradeTable() {
+  const tbody = document.getElementById('tradeBody');
+  const sells = RAW.trades.filter(t => t.type === 'sell');
+  const buys = RAW.trades.filter(t => t.type === 'buy');
+
+  let html = '';
+  sells.forEach((sell, i) => {
+    const buy = buys[i] || {};
+    const pnl = sell.pnl;
+    const isWin = pnl >= 0;
+    html += `
+      <tr>
+        <td style="color:#6b7280">${i + 1}</td>
+        <td><span class="badge badge-buy">매수</span> → <span class="badge badge-sell">매도</span></td>
+        <td>${buy.date || '-'} → ${sell.date}</td>
+        <td>${(buy.price || 0).toLocaleString()} → ${sell.price.toLocaleString()}</td>
+        <td style="color:${isWin ? '#10b981' : '#ef4444'}; font-weight:700">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%</td>
+        <td><span class="badge ${isWin ? 'badge-win' : 'badge-loss'}">${isWin ? '✅ 이익' : '❌ 손실'}</span></td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+</script>
+</body>
+</html>
