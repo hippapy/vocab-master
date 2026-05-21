@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KODEX 레버리지 생활형 스윙 전략</title>
+<script src="./chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #070b14; --surface: #0f1623; --surface2: #1a2234; --surface3: #243049;
+  --accent: #3b82f6; --green: #10b981; --red: #ef4444; --yellow: #f59e0b;
+  --purple: #8b5cf6; --text: #e2e8f0; --dim: #8892a4; --border: #1e293b;
+}
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #0c1526 0%, #0f1e36 100%);
+  border-bottom: 1px solid rgba(59,130,246,0.2);
+  padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo h1 { font-size: 16px; font-weight: 700; }
+.logo-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.live-sig { display: flex; align-items: center; gap: 8px; }
+.sig-tag { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.sig-buy { background: rgba(16,185,129,0.15); border: 1px solid #10b981; color: #10b981; }
+.sig-wait { background: rgba(245,158,11,0.15); border: 1px solid #f59e0b; color: #f59e0b; }
+.cost-tag { font-size: 11px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #60a5fa; padding: 4px 10px; border-radius: 6px; }
+
+/* Reality Alert */
+.reality-banner {
+  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.08));
+  border: 1px solid rgba(245,158,11,0.25); border-radius: 12px;
+  padding: 14px 18px; margin: 16px 24px 0; display: flex; gap: 12px; align-items: flex-start;
+}
+.reality-icon { font-size: 20px; flex-shrink: 0; }
+.reality-text h3 { font-size: 13px; color: var(--yellow); margin-bottom: 4px; }
+.reality-text p { font-size: 12px; color: var(--dim); line-height: 1.6; }
+.reality-text strong { color: var(--text); }
+
+/* Strategy Rule */
+.rule-card {
+  background: var(--surface); border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 12px; padding: 14px 18px; margin: 12px 24px 0;
+}
+.rule-title { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.rule-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rule-box { background: var(--surface2); border-radius: 8px; padding: 8px 14px; font-size: 12px; border: 1px solid var(--border); }
+.rule-box .label { font-size: 10px; color: var(--dim); margin-bottom: 2px; }
+.rule-box .val { color: var(--text); font-weight: 600; }
+.rule-box.entry { border-color: rgba(16,185,129,0.3); }
+.rule-box.exit { border-color: rgba(239,68,68,0.3); }
+.arrow { color: var(--dim); font-size: 16px; }
+
+/* Stats Row */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap: 10px; padding: 12px 24px 0; }
+.stat-box { background: var(--surface); border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border); }
+.stat-lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-val { font-size: 22px; font-weight: 700; margin-top: 3px; }
+.stat-note { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.c-green { color: var(--green); } .c-red { color: var(--red); }
+.c-blue { color: var(--accent); } .c-yellow { color: var(--yellow); }
+.c-purple { color: var(--purple); }
+
+/* 2-col layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 24px 0; }
+.one-col { padding: 12px 24px 0; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* Cards */
+.card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 16px; }
+.card-title { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; padding: 12px 24px 0; }
+.tab-btn { padding: 7px 14px; border-radius: 8px; border: none; background: var(--surface); color: var(--dim); cursor: pointer; font-size: 12px; font-weight: 600; border: 1px solid var(--border); transition: all 0.15s; }
+.tab-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Period buttons */
+.pbtn-row { display: flex; gap: 4px; }
+.pbtn { padding: 3px 9px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); color: var(--dim); cursor: pointer; font-size: 10px; font-weight: 600; }
+.pbtn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Monthly heatmap */
+.heatmap { display: grid; grid-template-columns: 40px repeat(12, 1fr); gap: 3px; font-size: 10px; }
+.hm-header { text-align: center; color: var(--dim); padding: 2px; }
+.hm-year { display: flex; align-items: center; color: var(--dim); font-weight: 600; font-size: 10px; }
+.hm-cell {
+  aspect-ratio: 1; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; cursor: default; transition: transform 0.1s;
+}
+.hm-cell:hover { transform: scale(1.1); }
+.hm-pos { background: rgba(16,185,129,0.25); color: #10b981; }
+.hm-neg { background: rgba(239,68,68,0.2); color: #ef4444; }
+.hm-zero { background: rgba(255,255,255,0.04); color: var(--dim); }
+
+/* Living calc */
+.calc-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 8px; }
+.calc-box { background: var(--surface2); border-radius: 8px; padding: 12px; border: 1px solid var(--border); }
+.calc-target { font-size: 11px; color: var(--dim); }
+.calc-capital { font-size: 18px; font-weight: 700; color: var(--accent); margin: 4px 0; }
+.calc-note { font-size: 10px; color: var(--dim); }
+.calc-risk { font-size: 10px; color: var(--yellow); margin-top: 4px; }
+
+/* Trade table */
+.trade-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+.trade-tbl th { padding: 7px 10px; color: var(--dim); font-size: 10px; text-transform: uppercase; border-bottom: 1px solid var(--border); text-align: left; }
+.trade-tbl td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.trade-tbl tr:hover td { background: rgba(255,255,255,0.02); }
+.badge { padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+.b-win { background: rgba(16,185,129,0.15); color: var(--green); }
+.b-loss { background: rgba(239,68,68,0.15); color: var(--red); }
+.b-stop { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.b-time { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+/* Insight list */
+.insight { background: linear-gradient(135deg,rgba(16,185,129,0.06),rgba(59,130,246,0.06)); border: 1px solid rgba(16,185,129,0.15); border-radius: 10px; padding: 14px 16px; margin-top: 12px; }
+.insight h4 { font-size: 12px; color: var(--green); margin-bottom: 8px; }
+.insight li { font-size: 12px; color: var(--dim); padding: 3px 0; list-style: none; display: flex; gap: 8px; }
+.insight li::before { content: '▸'; color: var(--accent); flex-shrink: 0; }
+.insight li strong { color: var(--text); }
+
+/* Warning box */
+.warn-box { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+.warn-box h4 { font-size: 12px; color: var(--red); margin-bottom: 6px; }
+.warn-box p { font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+/* range slider */
+input[type=range] { accent-color: var(--accent); width: 100%; }
+.slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.slider-row label { font-size: 12px; color: var(--dim); white-space: nowrap; min-width: 80px; }
+.slider-val { font-size: 14px; font-weight: 700; color: var(--accent); min-width: 80px; text-align: right; }
+
+#tab-calc, #tab-trades, #tab-chart { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <h1>KODEX 레버리지 생활형 스윙전략</h1>
+      <div class="logo-sub">MACD 골든크로스 + MA20 위 | 편도수수료 0.05% (ETF 거래세 면제)</div>
+    </div>
+  </div>
+  <div class="live-sig">
+    <div class="cost-tag">왕복비용 0.10%</div>
+    <div id="headerSig" class="sig-tag sig-buy">⚡ 매수 대기 중</div>
+  </div>
+</div>
+
+<!-- Reality Banner -->
+<div class="reality-banner">
+  <div class="reality-icon">⚠️</div>
+  <div class="reality-text">
+    <h3>데이터 편향 경고 — 정상기간 기준으로 평가하세요</h3>
+    <p>
+      2025~2026년은 역사적 이례구간(+1,134%)으로 전체 백테스트를 왜곡합니다.
+      <strong>정상기간(2019~2024) 기준</strong>: 월평균 +0.91%, 양수달 31%(64개월 중 20개월), 최악월 -8.9%, MDD -15.5%.
+      이 수치가 현실적 기대치입니다. 생활비 설계는 반드시 정상기간 기준으로 하세요.
+    </p>
+  </div>
+</div>
+
+<!-- Strategy Rule -->
+<div class="rule-card">
+  <div class="rule-title">📌 전략 규칙 (주 1~2회 확인)</div>
+  <div class="rule-flow">
+    <div class="rule-box entry">
+      <div class="label">📥 진입 조건 (모두 충족)</div>
+      <div class="val">① MACD 히스토그램: 음→양 전환<br>② 종가 &gt; MA20 (20일 이평 위)</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="rule-box exit">
+      <div class="label">📤 청산 조건 (하나라도)</div>
+      <div class="val">① 보유 7거래일 경과 (기간 만료)<br>② 매수가 대비 -8% 하락 (손절)</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="rule-box">
+      <div class="label">💡 매매 실행 시점</div>
+      <div class="val">전날 종가 신호 확인<br>→ 다음날 시초가 실행</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="rule-box">
+      <div class="label">📊 백테스트 성과 (정상기간)</div>
+      <div class="val">CAGR 14~24% | 승률 65.9%<br>MDD -15.5% | 샤프 1.52</div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="stat-lbl">CAGR (전체)</div>
+    <div class="stat-val c-green">24.5%</div>
+    <div class="stat-note">편향 포함 수치</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">MDD</div>
+    <div class="stat-val c-red">-15.5%</div>
+    <div class="stat-note">B&H -59.8% 대비</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">샤프 지수</div>
+    <div class="stat-val c-blue">1.52</div>
+    <div class="stat-note">위험조정 성과</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">승률</div>
+    <div class="stat-val c-green">65.9%</div>
+    <div class="stat-note">27승 14패 / 41거래</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">평균 이익</div>
+    <div class="stat-val c-green">+8.43%</div>
+    <div class="stat-note">건당 평균 보유 7일</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">평균 손실</div>
+    <div class="stat-val c-red">-4.03%</div>
+    <div class="stat-note">손절 1회 / 만기 40회</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">손익비</div>
+    <div class="stat-val c-yellow">2.09</div>
+    <div class="stat-note">이익/손실 배율</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-lbl">월평균(정상기간)</div>
+    <div class="stat-val c-purple">+0.91%</div>
+    <div class="stat-note">2019~2024 기준</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn on" onclick="switchTab('overview', this)">📊 성과 개요</button>
+  <button class="tab-btn" onclick="switchTab('chart', this)">💹 차트</button>
+  <button class="tab-btn" onclick="switchTab('calc', this)">💰 생활비 계산기</button>
+  <button class="tab-btn" onclick="switchTab('trades', this)">📋 거래 내역</button>
+</div>
+
+<!-- TAB: 개요 -->
+<div id="tab-overview">
+
+  <div class="two-col">
+    <!-- 월별 수익률 히트맵 -->
+    <div class="card">
+      <div class="card-title">월별 전략 수익률 히트맵 (정상기간 2019~2024)</div>
+      <div id="heatmap"></div>
+    </div>
+
+    <!-- 연도별 차트 -->
+    <div class="card">
+      <div class="card-title">연도별 성과 비교</div>
+      <canvas id="yearChart" height="180"></canvas>
+    </div>
+  </div>
+
+  <div class="one-col">
+    <div class="card">
+      <div class="card-title">
+        전략 자산곡선 vs Buy&Hold
+        <div class="pbtn-row">
+          <button class="pbtn on" onclick="setEqRange('all',this)">전체</button>
+          <button class="pbtn" onclick="setEqRange('3y',this)">3년</button>
+          <button class="pbtn" onclick="setEqRange('1y',this)">1년</button>
+        </div>
+      </div>
+      <canvas id="eqChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="insight">
+      <h4>💡 전략 핵심 인사이트</h4>
+      <ul>
+        <li><strong>왜 MACD 골든크로스인가:</strong> 단기 모멘텀 전환 포착에 최적. 횡보장에서도 단기 반등을 캐치 가능</li>
+        <li><strong>7일 보유 제한의 이유:</strong> 레버리지 ETF는 장기 보유 시 변동성 감쇠 발생. 7일이면 모멘텀 수명과 일치</li>
+        <li><strong>승률 65.9% 의미:</strong> 10번 거래에 6~7번은 이익. 심리적으로 지속 가능한 수준</li>
+        <li><strong>손절 8% 설정 이유:</strong> 백테스트에서 실제 손절 발생은 41건 중 1건. 주로 기간 만료로 청산</li>
+        <li><strong>MDD -15.5%의 의미:</strong> 최악의 경우 1억 투자 시 1,550만원 일시적 평가손. 손절 vs 규칙 준수가 관건</li>
+      </ul>
+    </div>
+    <div class="warn-box">
+      <h4>⚠️ 생활형 투자 현실 경고</h4>
+      <p>
+        정상기간 기준 <strong>월 양수 비율은 31%</strong> (10달 중 3달만 수익).
+        월 수익이 불규칙하므로 <strong>매월 생활비를 꺼내는 구조는 위험</strong>합니다.<br><br>
+        권장 방식: 분기별 정산 → 이익 발생 시 출금. 생활비는 별도 비상금에서 확보.
+        <strong>최소 6~12개월 생활비 예비금을 별도 보관</strong>하고 전략을 운용하세요.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB: 차트 -->
+<div id="tab-chart">
+  <div class="one-col">
+    <div class="card">
+      <div class="card-title">
+        가격 차트 + MA20 + 매매 신호
+        <div class="pbtn-row">
+          <button class="pbtn on" onclick="setPriceRange('all',this)">전체</button>
+          <button class="pbtn" onclick="setPriceRange('2y',this)">2년</button>
+          <button class="pbtn" onclick="setPriceRange('1y',this)">1년</button>
+          <button class="pbtn" onclick="setPriceRange('6m',this)">6개월</button>
+        </div>
+      </div>
+      <canvas id="priceChart" height="110"></canvas>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">MACD (진입 신호 핵심 지표)</div>
+      <canvas id="macdChart" height="70"></canvas>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">RSI (14)</div>
+      <canvas id="rsiChart" height="60"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: 생활비 계산기 -->
+<div id="tab-calc">
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">월 목표 수익 계산기</div>
+
+      <div class="slider-row">
+        <label>목표 월 수익</label>
+        <input type="range" id="sliderTarget" min="20" max="500" step="10" value="100" oninput="updateCalc()">
+        <div class="slider-val" id="valTarget">100만원</div>
+      </div>
+      <div class="slider-row">
+        <label>예상 월 수익률</label>
+        <input type="range" id="sliderRate" min="0.3" max="2.5" step="0.1" value="0.91" oninput="updateCalc()">
+        <div class="slider-val" id="valRate">0.91%</div>
+      </div>
+      <div class="slider-row">
+        <label>안전 여유율</label>
+        <input type="range" id="sliderMargin" min="1.0" max="3.0" step="0.1" value="1.5" oninput="updateCalc()">
+        <div class="slider-val" id="valMargin">×1.5 (보수적)</div>
+      </div>
+
+      <div style="margin-top:16px; background:var(--surface2); border-radius:10px; padding:16px;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:6px;">필요 원금 (계산값)</div>
+        <div id="calcResult" style="font-size:32px;font-weight:700;color:var(--accent)">1억 6,484만원</div>
+        <div id="calcNote" style="font-size:11px;color:var(--dim);margin-top:4px"></div>
+      </div>
+
+      <div class="insight" style="margin-top:12px">
+        <h4>📌 슬라이더 사용 가이드</h4>
+        <ul>
+          <li><strong>예상 월 수익률 0.91%</strong> = 정상기간(2019~2024) 실적. 가장 현실적</li>
+          <li><strong>안전 여유율 ×1.5</strong> = 변동성 고려 보수적 설계 권장</li>
+          <li><strong>출금 방식</strong>: 분기 이익의 50%만 출금, 나머지는 재투자</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">원금 규모별 시나리오 (정상기간 기준)</div>
+      <div class="calc-row" id="scenarioGrid"></div>
+
+      <div class="warn-box" style="margin-top:12px">
+        <h4>⚠️ 현실적 기대치 설정</h4>
+        <p>
+          <strong>10달 중 3달만 수익 발생</strong> — 월 생활비를 매달 꺼낼 수 없습니다.<br><br>
+          권장 출금 규칙:<br>
+          ① 분기 말 총 이익이 플러스일 때만 50% 출금<br>
+          ② 나머지는 재투자로 복리 축적<br>
+          ③ 생활비는 전략 외 별도 6개월치 예비금 확보
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 연도별 생활비 시뮬 -->
+  <div class="one-col">
+    <div class="card">
+      <div class="card-title">1억원 투자 시 연도별 수익 시뮬레이션 (정상기간)</div>
+      <canvas id="simChart" height="80"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: 거래 내역 -->
+<div id="tab-trades">
+  <div class="one-col">
+    <div class="card">
+      <div class="card-title">전체 거래 내역 (41건) — MACD골든+MA20위+손절8%+7일</div>
+      <table class="trade-tbl">
+        <thead>
+          <tr>
+            <th>#</th><th>매수일</th><th>매도일</th>
+            <th>매수가</th><th>매도가</th><th>수익률</th><th>보유일</th><th>청산 이유</th><th>결과</th>
+          </tr>
+        </thead>
+        <tbody id="tradeTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px"></div>
+
+<script>
+// ─── 데이터 로드 ──────────────────────────────────────────
+let D = null;
+fetch('./kodex_swing.json').then(r => r.json()).then(d => { D = d; init(); });
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function init() {
+  buildHeatmap();
+  drawYearChart();
+  drawEqChart('all');
+  drawPriceChart('all');
+  drawMacdChart();
+  drawRsiChart();
+  buildTradeTable();
+  buildScenarioGrid();
+  drawSimChart();
+  updateCalc();
+  setCurrentSignal();
+}
+
+function setCurrentSignal() {
+  const n = D.dates.length;
+  const pos = D.position[n-1];
+  const el = document.getElementById('headerSig');
+  if (pos === 1) {
+    el.textContent = '🟢 보유 중';
+    el.className = 'sig-tag sig-buy';
+  } else {
+    el.textContent = '⏳ 신호 대기';
+    el.className = 'sig-tag sig-wait';
+  }
+}
+
+// ─── 탭 전환 ──────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  ['overview','chart','calc','trades'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = (t === id) ? '' : 'none';
+  });
+}
+
+// ─── 히트맵 ───────────────────────────────────────────────
+function buildHeatmap() {
+  const monthly = D.monthly_ret;
+  const years = [2019,2020,2021,2022,2023,2024];
+  const container = document.getElementById('heatmap');
+
+  let html = '<div class="heatmap">';
+  html += '<div class="hm-year"></div>';
+  for (let m = 1; m <= 12; m++) html += `<div class="hm-header">${m}월</div>`;
+
+  for (const yr of years) {
+    html += `<div class="hm-year">${yr}</div>`;
+    for (let m = 1; m <= 12; m++) {
+      const key = Object.keys(monthly).find(k => k.startsWith(`${yr}-${String(m).padStart(2,'0')}`));
+      const val = key ? monthly[key] : null;
+      if (val === null) {
+        html += `<div class="hm-cell hm-zero">-</div>`;
+      } else {
+        const cls = val > 0.3 ? 'hm-pos' : val < -0.3 ? 'hm-neg' : 'hm-zero';
+        const intensity = Math.min(Math.abs(val) / 15, 1);
+        const bg = val > 0
+          ? `rgba(16,185,129,${0.15 + intensity * 0.6})`
+          : val < 0
+          ? `rgba(239,68,68,${0.15 + intensity * 0.5})`
+          : 'rgba(255,255,255,0.04)';
+        const color = val > 0.3 ? '#10b981' : val < -0.3 ? '#ef4444' : '#6b7280';
+        const sign = val > 0 ? '+' : '';
+        html += `<div class="hm-cell" style="background:${bg};color:${color}" title="${key}: ${sign}${val}%">${sign}${val.toFixed(1)}</div>`;
+      }
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ─── 연도별 차트 ──────────────────────────────────────────
+let yearChart;
+function drawYearChart() {
+  const years = [2019,2020,2021,2022,2023,2024];
+  const yearData = {
+    2019: {strat: 3.6, bh: 23.4},
+    2020: {strat: 14.6, bh: 67.5},
+    2021: {strat: 13.3, bh: -3.9},
+    2022: {strat: 0.3, bh: -46.6},
+    2023: {strat: 15.8, bh: 47.9},
+    2024: {strat: 10.6, bh: -26.7},
+  };
+  const strat = years.map(y => yearData[y].strat);
+  const bh = years.map(y => yearData[y].bh);
+
+  if (yearChart) yearChart.destroy();
+  yearChart = new Chart(document.getElementById('yearChart'), {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [
+        { label: '전략(%)', data: strat, backgroundColor: strat.map(v=>v>=0?'rgba(16,185,129,0.7)':'rgba(239,68,68,0.7)') },
+        { label: 'B&H(%)', data: bh, backgroundColor: bh.map(v=>v>=0?'rgba(99,102,241,0.4)':'rgba(239,68,68,0.35)') }
+      ]
+    },
+    options: chartOpts('%')
+  });
+}
+
+// ─── 자산 곡선 ────────────────────────────────────────────
+let eqChart;
+function drawEqChart(range) {
+  const [s] = getRangeIdx(range);
+  const labels = D.dates.slice(s);
+  const st = D.strategy_equity.slice(s);
+  const bh = D.bh_equity.slice(s);
+  const stR = st.map(v => +((v/st[0]-1)*100).toFixed(1));
+  const bhR = bh.map(v => +((v/bh[0]-1)*100).toFixed(1));
+
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '전략(%)', data: stR, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.06)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
+        { label: 'B&H(%)', data: bhR, borderColor: '#6366f1', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, borderDash: [4,3] }
+      ]
+    },
+    options: chartOpts('%')
+  });
+}
+
+function setEqRange(r, btn) {
+  document.querySelectorAll('.card:has(#eqChart) .pbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  drawEqChart(r);
+}
+
+// ─── 가격 차트 ────────────────────────────────────────────
+let priceChart;
+function drawPriceChart(range) {
+  const [s] = getRangeIdx(range);
+  const labels = D.dates.slice(s);
+  const cl = D.close.slice(s);
+  const ma = D.ma20.slice(s);
+  const trades = D.trades;
+
+  const buyPts = labels.map((d,i) => {
+    const t = trades.find(tr => tr.buy_date === d);
+    return t ? cl[i] : null;
+  });
+  const sellPts = labels.map((d,i) => {
+    const t = trades.find(tr => tr.sell_date === d);
+    return t ? cl[i] : null;
+  });
+
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'KODEX 레버리지', data: cl, borderColor: '#e2e8f0', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1, order: 3 },
+        { label: 'MA20', data: ma, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, order: 2 },
+        { label: '매수', data: buyPts, borderColor: 'transparent', backgroundColor: '#10b981', pointRadius: buyPts.map(v=>v?7:0), pointStyle: 'triangle', showLine: false, order: 0 },
+        { label: '매도', data: sellPts, borderColor: 'transparent', backgroundColor: '#ef4444', pointRadius: sellPts.map(v=>v?6:0), pointStyle: 'rectRot', showLine: false, order: 0 }
+      ]
+    },
+    options: chartOpts('원', true)
+  });
+}
+
+function setPriceRange(r, btn) {
+  document.querySelectorAll('#tab-chart .card:first-child .pbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  drawPriceChart(r);
+}
+
+// ─── MACD 차트 ────────────────────────────────────────────
+let macdChart2;
+function drawMacdChart() {
+  const n = D.dates.length;
+  const s = Math.max(0, n - 504);
+  const labels = D.dates.slice(s);
+  const macd = D.macd.slice(s);
+  const sig = D.macd_sig.slice(s);
+  const hist = D.macd_hist.slice(s);
+
+  if (macdChart2) macdChart2.destroy();
+  macdChart2 = new Chart(document.getElementById('macdChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '히스토그램', data: hist, backgroundColor: hist.map(v=>(v||0)>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'), order: 3 },
+        { label: 'MACD', data: macd, type: 'line', borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, order: 1 },
+        { label: 'Signal', data: sig, type: 'line', borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, order: 2 }
+      ]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: { labels: { color: '#8892a4', font: { size: 10 } } } },
+      scales: { x: xScale(), y: yScale() }
+    },
+    plugins: [{
+      id: 'zero-line',
+      beforeDraw(c) {
+        const { ctx, chartArea: { left, right }, scales: { y } } = c;
+        const yp = y.getPixelForValue(0);
+        ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(left, yp); ctx.lineTo(right, yp); ctx.stroke(); ctx.restore();
+      }
+    }]
+  });
+}
+
+// ─── RSI 차트 ────────────────────────────────────────────
+let rsiChart2;
+function drawRsiChart() {
+  const n = D.dates.length;
+  const s = Math.max(0, n - 504);
+  const labels = D.dates.slice(s);
+  const rsi = D.rsi.slice(s);
+
+  if (rsiChart2) rsiChart2.destroy();
+  rsiChart2 = new Chart(document.getElementById('rsiChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ label: 'RSI(14)', data: rsi, borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 }]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: { labels: { color: '#8892a4', font: { size: 10 } } } },
+      scales: { x: xScale(), y: { ...yScale(), min: 0, max: 100 } }
+    },
+    plugins: [{
+      id: 'rsi-zones',
+      beforeDraw(c) {
+        const { ctx, chartArea: { left, right }, scales: { y } } = c;
+        const lines = [[70,'rgba(239,68,68,0.4)'],[30,'rgba(16,185,129,0.4)']];
+        lines.forEach(([v, col]) => {
+          const yp = y.getPixelForValue(v);
+          ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle=col; ctx.lineWidth=1;
+          ctx.beginPath(); ctx.moveTo(left,yp); ctx.lineTo(right,yp); ctx.stroke(); ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
+// ─── 거래 테이블 ──────────────────────────────────────────
+function buildTradeTable() {
+  const trades = D.trades;
+  let html = '';
+  trades.forEach((t, i) => {
+    const isWin = t.pnl > 0;
+    const sign = t.pnl > 0 ? '+' : '';
+    const reasonCls = t.reason === 'stop' ? 'b-stop' : 'b-time';
+    const reasonTxt = t.reason === 'stop' ? '손절 -8%' : '기간만료 7일';
+    html += `<tr>
+      <td style="color:var(--dim)">${i+1}</td>
+      <td>${t.buy_date}</td><td>${t.sell_date}</td>
+      <td>${t.buy_price.toLocaleString()}</td>
+      <td>${t.sell_price.toLocaleString()}</td>
+      <td style="color:${isWin?'var(--green)':'var(--red)'}; font-weight:700">${sign}${t.pnl.toFixed(2)}%</td>
+      <td>${t.hold}일</td>
+      <td><span class="badge ${reasonCls}">${reasonTxt}</span></td>
+      <td><span class="badge ${isWin?'b-win':'b-loss'}">${isWin?'✅ 이익':'❌ 손실'}</span></td>
+    </tr>`;
+  });
+  document.getElementById('tradeTbody').innerHTML = html;
+}
+
+// ─── 생활비 계산기 ────────────────────────────────────────
+function updateCalc() {
+  const target = parseInt(document.getElementById('sliderTarget').value) * 10000;
+  const rate = parseFloat(document.getElementById('sliderRate').value) / 100;
+  const margin = parseFloat(document.getElementById('sliderMargin').value);
+
+  document.getElementById('valTarget').textContent = `${(target/10000).toFixed(0)}만원`;
+  document.getElementById('valRate').textContent = `${(rate*100).toFixed(2)}%`;
+  document.getElementById('valMargin').textContent = `×${margin.toFixed(1)} (${margin<=1.2?'낙관':margin<=1.8?'보수적':'매우보수'})`;
+
+  const capital = Math.round(target / rate * margin);
+  document.getElementById('calcResult').textContent = (capital/10000).toLocaleString(undefined,{maximumFractionDigits:0}) + '만원';
+  document.getElementById('calcNote').textContent =
+    `월 수익 ${(rate*100).toFixed(2)}% 기준 | 안전여유 ×${margin.toFixed(1)} | 분기 이익의 50% 출금 권장`;
+}
+
+function buildScenarioGrid() {
+  const scenarios = [
+    { capital: 3000, monthly: 0.91 },
+    { capital: 5000, monthly: 0.91 },
+    { capital: 10000, monthly: 0.91 },
+    { capital: 20000, monthly: 0.91 },
+    { capital: 30000, monthly: 0.91 },
+    { capital: 50000, monthly: 0.91 },
+  ];
+  let html = '';
+  for (const sc of scenarios) {
+    const monthly = Math.round(sc.capital * 10000 * sc.monthly / 100 / 10000);
+    const quarterly = monthly * 3;
+    html += `
+      <div class="calc-box">
+        <div class="calc-target">원금 ${sc.capital.toLocaleString()}만원</div>
+        <div class="calc-capital">월 약 ${monthly}만원</div>
+        <div class="calc-note">분기 약 ${quarterly}만원 (50% 출금 시 ${Math.round(quarterly*0.5)}만원)</div>
+        <div class="calc-risk">최악월 시 -${Math.round(sc.capital*10000*0.089/10000)}만원 손실 가능</div>
+      </div>`;
+  }
+  document.getElementById('scenarioGrid').innerHTML = html;
+}
+
+// ─── 시뮬레이션 차트 ──────────────────────────────────────
+let simChart;
+function drawSimChart() {
+  const yearResults = [
+    { yr: 2019, stratRet: 3.6, months: 4, pos: 2 },
+    { yr: 2020, stratRet: 14.6, months: 12, pos: 5 },
+    { yr: 2021, stratRet: 13.3, months: 12, pos: 5 },
+    { yr: 2022, stratRet: 0.3, months: 12, pos: 1 },
+    { yr: 2023, stratRet: 15.8, months: 12, pos: 4 },
+    { yr: 2024, stratRet: 10.6, months: 12, pos: 3 },
+  ];
+  const capital = 100_000_000;
+  const labels = yearResults.map(y => String(y.yr));
+  const earnings = yearResults.map(y => Math.round(capital * y.stratRet / 100 / 10000));
+
+  if (simChart) simChart.destroy();
+  simChart = new Chart(document.getElementById('simChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '연 수익 (만원)',
+          data: earnings,
+          backgroundColor: earnings.map(v => v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'),
+        }
+      ]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: {
+        legend: { labels: { color: '#8892a4' } },
+        tooltip: { callbacks: { label: ctx => `연 수익: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}만원` } }
+      },
+      scales: {
+        x: xScale(),
+        y: { ...yScale(), ticks: { color: '#8892a4', callback: v => v + '만' } }
+      }
+    }
+  });
+}
+
+// ─── 공통 차트 옵션 ───────────────────────────────────────
+function xScale() {
+  return { ticks: { color: '#6b7280', maxTicksLimit: 10, font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } };
+}
+function yScale() {
+  return { ticks: { color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } };
+}
+function chartOpts(unit = '', localeNum = false) {
+  return {
+    responsive: true, animation: false,
+    plugins: { legend: { labels: { color: '#8892a4', font: { size: 10 } } } },
+    scales: {
+      x: xScale(),
+      y: { ...yScale(), ticks: { color: '#6b7280', font: { size: 9 }, callback: v => localeNum ? v.toLocaleString() : v + unit } }
+    }
+  };
+}
+
+function getRangeIdx(range) {
+  const n = D.dates.length;
+  const map = { all: 0, '3y': Math.max(0, n - 756), '2y': Math.max(0, n - 504), '1y': Math.max(0, n - 252), '6m': Math.max(0, n - 126) };
+  const s = map[range] ?? 0;
+  return [s, n];
+}
+</script>
+</body>
+</html>
